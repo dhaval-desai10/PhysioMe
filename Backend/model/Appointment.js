@@ -24,6 +24,12 @@ const appointmentSchema = new mongoose.Schema({
     enum: ['initial', 'follow-up', 'assessment'],
     required: true
   },
+  visitType: {
+    type: String,
+    enum: ['clinic', 'home', 'online'],
+    required: true,
+    default: 'clinic'
+  },
   status: {
     type: String,
     enum: ['pending', 'confirmed', 'cancelled', 'completed'],

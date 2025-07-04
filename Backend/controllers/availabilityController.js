@@ -20,7 +20,7 @@ export const addAvailabilitySlots = async (req, res) => {
     const selectedDate = new Date(date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     if (selectedDate < today) {
       return res.status(400).json({
         success: false,
@@ -98,7 +98,7 @@ export const getTherapistAvailabilitySlots = async (req, res) => {
       selectedDate.setHours(0, 0, 0, 0);
       const nextDay = new Date(selectedDate);
       nextDay.setDate(nextDay.getDate() + 1);
-      
+
       query.date = {
         $gte: selectedDate,
         $lt: nextDay
@@ -107,7 +107,7 @@ export const getTherapistAvailabilitySlots = async (req, res) => {
       const start = new Date(startDate);
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
-      
+
       query.date = {
         $gte: start,
         $lte: end
@@ -117,7 +117,7 @@ export const getTherapistAvailabilitySlots = async (req, res) => {
       const today = new Date();
       const thirtyDaysLater = new Date();
       thirtyDaysLater.setDate(today.getDate() + 30);
-      
+
       query.date = {
         $gte: today,
         $lte: thirtyDaysLater
@@ -144,6 +144,42 @@ export const getTherapistAvailabilitySlots = async (req, res) => {
 };
 
 // Get available slots for patients (public endpoint)
+// Helper function to generate time slots based on working hours and duration
+const generateTimeSlots = (startTime, endTime, duration, workingDays, selectedDate) => {
+  const slots = [];
+  const dayOfWeek = selectedDate.toLocaleDateString('en-US', { weekday: 'long' });
+
+  // Check if the selected date is a working day
+  if (!workingDays.includes(dayOfWeek)) {
+    return slots;
+  }
+
+  // Parse start and end times
+  const [startHour, startMinute] = startTime.split(':').map(Number);
+  const [endHour, endMinute] = endTime.split(':').map(Number);
+
+  // Create start and end time objects
+  const start = new Date();
+  start.setHours(startHour, startMinute, 0, 0);
+
+  const end = new Date();
+  end.setHours(endHour, endMinute, 0, 0);
+
+  // Generate slots
+  const current = new Date(start);
+  while (current < end) {
+    const timeString = current.toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    slots.push(timeString);
+    current.setMinutes(current.getMinutes() + duration);
+  }
+
+  return slots;
+};
+
 export const getAvailableSlotsForPatient = async (req, res) => {
   try {
     const { therapistId, date } = req.params;
@@ -162,34 +198,72 @@ export const getAvailableSlotsForPatient = async (req, res) => {
       });
     }
 
-    // Get available slots for the specific date
     const selectedDate = new Date(date);
     selectedDate.setHours(0, 0, 0, 0);
+
+    // Check if date is in the past
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (selectedDate < today) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot book appointments for past dates'
+      });
+    }
+
+    // Generate all possible time slots based on working hours and duration
+    const allSlots = generateTimeSlots(
+      therapist.workingHours.start,
+      therapist.workingHours.end,
+      therapist.appointmentDuration,
+      therapist.workingDays,
+      selectedDate
+    );
+
+    if (allSlots.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          availableSlots: [],
+          therapist: {
+            name: therapist.name,
+            specialization: therapist.specialization,
+            workingHours: therapist.workingHours,
+            appointmentDuration: therapist.appointmentDuration,
+            workingDays: therapist.workingDays
+          }
+        }
+      });
+    }
+
+    // Get booked appointments for this date
     const nextDay = new Date(selectedDate);
     nextDay.setDate(nextDay.getDate() + 1);
 
-    const slots = await AvailabilitySlot.find({
-      therapistId,
+    const bookedAppointments = await Appointment.find({
+      physiotherapistId: therapistId,
       date: {
         $gte: selectedDate,
         $lt: nextDay
       },
-      isBooked: false
-    }).sort({ time: 1 });
+      status: { $in: ['pending', 'confirmed'] } // Only consider active appointments
+    }).select('time');
+
+    const bookedTimes = bookedAppointments.map(appointment => appointment.time);
+
+    // Filter out booked slots
+    const availableSlots = allSlots.filter(time => !bookedTimes.includes(time));
 
     res.status(200).json({
       success: true,
       data: {
-        availableSlots: slots.map(slot => ({
-          id: slot._id,
-          time: slot.time,
-          duration: slot.duration
-        })),
+        availableSlots,
         therapist: {
           name: therapist.name,
           specialization: therapist.specialization,
           workingHours: therapist.workingHours,
-          appointmentDuration: therapist.appointmentDuration
+          appointmentDuration: therapist.appointmentDuration,
+          workingDays: therapist.workingDays
         }
       }
     });

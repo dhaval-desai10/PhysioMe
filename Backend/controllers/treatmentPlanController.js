@@ -1,6 +1,5 @@
 import TreatmentPlan from '../model/TreatmentPlan.js';
 import User from '../model/User.js';
-import { sendNewTreatmentPlanEmail } from '../utils/emailService.js';
 
 // Create new treatment plan
 export const createTreatmentPlan = async (req, res) => {
@@ -34,8 +33,7 @@ export const createTreatmentPlan = async (req, res) => {
     await treatmentPlan.populate('exercises.exerciseId', 'name description mediaUrl');
     await treatmentPlan.populate('physiotherapistId', 'name email');
 
-    // Send email notification to patient
-    await sendNewTreatmentPlanEmail(patient, req.user, treatmentPlan);
+    console.log('Treatment plan created successfully for patient:', patient.name);
 
     res.status(201).json({
       success: true,
@@ -179,6 +177,40 @@ export const deleteTreatmentPlan = async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'Treatment plan deleted successfully'
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Get treatment plans for a specific patient (for therapists)
+export const getPatientTreatmentPlans = async (req, res) => {
+  try {
+    const { patientId } = req.params;
+
+    // Verify that the requesting user is a therapist
+    if (req.user.role !== 'physiotherapist') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only therapists can access patient treatment plans'
+      });
+    }
+
+    const treatmentPlans = await TreatmentPlan.find({
+      patientId: patientId,
+      physiotherapistId: req.user._id // Only get plans created by this therapist
+    })
+      .populate('patientId', 'name email')
+      .populate('physiotherapistId', 'name email')
+      .populate('exercises.exerciseId', 'name description mediaUrl')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: treatmentPlans
     });
   } catch (error) {
     res.status(400).json({

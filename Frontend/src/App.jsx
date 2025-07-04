@@ -1,37 +1,55 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './lib/AuthContext';
-import ProtectedRoute from './components/ProtectedRoute';
-import Navbar from './components/Navbar';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { AuthProvider, useAuth } from "./lib/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
 
 // Public Pages
-import Home from './pages/Home';
-import About from './pages/About';
-import Services from './pages/Services';
-import Contact from './pages/Contact';
-import Login from './pages/Login';
-import Register from './pages/Register';
+import Home from "./pages/Home";
+import About from "./pages/About";
+import Services from "./pages/Services";
+import Contact from "./pages/Contact";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+
+// Service Pages
+import PhysicalTherapy from "./pages/our_services/PhysicalTherapy";
+import SportsRehabilitation from "./pages/our_services/SportsRehabilitation";
+import ManualTherapy from "./pages/our_services/ManualTherapy";
 
 // Patient Pages
-import PatientDashboard from './pages/patient/PatientDashboard';
-import PatientProfile from './pages/patient/PatientProfile';
-import PatientAppointments from './pages/patient/PatientAppointments';
-import PatientExercisePlan from './pages/patient/ExercisePlan';
-import BookAppointment from './pages/patient/BookAppointment';
+import PatientDashboard from "./pages/patient/PatientDashboard";
+import PatientProfile from "./pages/patient/PatientProfile";
+import PatientAppointments from "./pages/patient/PatientAppointments";
+import PatientExercisePlan from "./pages/patient/ExercisePlan";
+import BookAppointment from "./pages/patient/BookAppointment";
+import TherapistProfileView from "./pages/patient/TherapistProfileView";
+import ProgressTracker from "./pages/patient/ProgressTracker";
+import ProgressReport from "./pages/patient/ProgressReport";
 
 // Therapist Pages
-import TherapistDashboard from './pages/therapist/TherapistDashboard';
-import TherapistProfile from './pages/therapist/TherapistProfile';
-import TherapistAvailability from './pages/therapist/TherapistAvailability';
-import Patients from './pages/therapist/Patients';
-import TherapistExercisePlan from './pages/therapist/ExercisePlan';
+import TherapistDashboard from "./pages/therapist/TherapistDashboard";
+import TherapistProfile from "./pages/therapist/TherapistProfile";
+import TherapistAvailability from "./pages/therapist/TherapistAvailability";
+import TherapistAppointments from "./pages/therapist/TherapistAppointments";
+import Patients from "./pages/therapist/Patients";
+import PatientProfileView from "./pages/therapist/PatientProfileView";
+import TherapistExercisePlan from "./pages/therapist/ExercisePlan";
+import ProgressOverview from "./pages/therapist/ProgressOverview";
+import ProgressDashboard from "./pages/therapist/ProgressDashboard";
 
 // Admin Pages
-import AdminLogin from './pages/admin/AdminLogin';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import TherapistApprovals from './pages/admin/TherapistApprovals';
-import TherapistDetails from './pages/admin/TherapistDetails';
-import PatientDetails from './pages/admin/PatientDetails';
-import LoadingScreen from './components/LoadingScreen';
+import AdminLogin from "./pages/admin/AdminLogin";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import TherapistApprovals from "./pages/admin/TherapistApprovals";
+import TherapistDetails from "./pages/admin/TherapistDetails";
+import PatientDetails from "./pages/admin/PatientDetails";
+import LoadingScreen from "./components/LoadingScreen";
 
 function AppRoutes() {
   const { loading } = useAuth();
@@ -50,27 +68,87 @@ function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
+      {/* Service Pages */}
+      <Route path="/services/physical-therapy" element={<PhysicalTherapy />} />
+      <Route
+        path="/services/sports-rehabilitation"
+        element={<SportsRehabilitation />}
+      />
+      <Route path="/services/manual-therapy" element={<ManualTherapy />} />
+
       {/* Protected Patient Routes */}
       <Route
         path="/patient/dashboard"
         element={
-          <ProtectedRoute allowedRoles={['patient']}>
+          <ProtectedRoute allowedRoles={["patient"]}>
             <PatientDashboard />
           </ProtectedRoute>
         }
-      >
-        {/* Nested Patient Routes */}
-        <Route path="profile" element={<PatientProfile />} />
-        <Route path="appointments" element={<PatientAppointments />} />
-        <Route path="exercise-plan/:planId" element={<PatientExercisePlan />} />
-        <Route path="exercise-plan" element={<PatientExercisePlan />} />
-      </Route>
+      />
+      <Route
+        path="/patient/profile"
+        element={
+          <ProtectedRoute allowedRoles={["patient"]}>
+            <PatientProfile />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/patient/appointments"
+        element={
+          <ProtectedRoute allowedRoles={["patient"]}>
+            <PatientAppointments />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/patient/exercise-plan/:planId"
+        element={
+          <ProtectedRoute allowedRoles={["patient"]}>
+            <PatientExercisePlan />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/patient/exercise-plan"
+        element={
+          <ProtectedRoute allowedRoles={["patient"]}>
+            <PatientExercisePlan />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/patient/progress"
+        element={
+          <ProtectedRoute allowedRoles={["patient"]}>
+            <ProgressTracker />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/patient/progress-report"
+        element={
+          <ProtectedRoute allowedRoles={["patient"]}>
+            <ProgressReport />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Therapist Profile View Route */}
+      <Route
+        path="/therapist/:therapistId/profile"
+        element={
+          <ProtectedRoute allowedRoles={["patient"]}>
+            <TherapistProfileView />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Book Appointment Route */}
-      <Route 
-        path="/therapist/:therapistId/book" 
+      <Route
+        path="/therapist/:therapistId/book"
         element={
-          <ProtectedRoute allowedRoles={['patient']}>
+          <ProtectedRoute allowedRoles={["patient"]}>
             <BookAppointment />
           </ProtectedRoute>
         }
@@ -80,7 +158,7 @@ function AppRoutes() {
       <Route
         path="/therapist/dashboard"
         element={
-          <ProtectedRoute allowedRoles={['physiotherapist']}>
+          <ProtectedRoute allowedRoles={["physiotherapist"]}>
             <TherapistDashboard />
           </ProtectedRoute>
         }
@@ -88,15 +166,23 @@ function AppRoutes() {
       <Route
         path="/therapist/patients"
         element={
-          <ProtectedRoute allowedRoles={['physiotherapist']}>
+          <ProtectedRoute allowedRoles={["physiotherapist"]}>
             <Patients />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/therapist/patient/:patientId"
+        element={
+          <ProtectedRoute allowedRoles={["physiotherapist"]}>
+            <PatientProfileView />
           </ProtectedRoute>
         }
       />
       <Route
         path="/therapist/profile"
         element={
-          <ProtectedRoute allowedRoles={['physiotherapist']}>
+          <ProtectedRoute allowedRoles={["physiotherapist"]}>
             <TherapistProfile />
           </ProtectedRoute>
         }
@@ -104,27 +190,62 @@ function AppRoutes() {
       <Route
         path="/therapist/availability"
         element={
-          <ProtectedRoute allowedRoles={['physiotherapist']}>
+          <ProtectedRoute allowedRoles={["physiotherapist"]}>
             <TherapistAvailability />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/therapist/appointments"
+        element={
+          <ProtectedRoute allowedRoles={["physiotherapist"]}>
+            <TherapistAppointments />
           </ProtectedRoute>
         }
       />
       <Route
         path="/therapist/exercise-plan"
         element={
-          <ProtectedRoute allowedRoles={['physiotherapist']}>
+          <ProtectedRoute allowedRoles={["physiotherapist"]}>
             <TherapistExercisePlan />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/therapist/exercise-plan/:patientId"
+        element={
+          <ProtectedRoute allowedRoles={["physiotherapist"]}>
+            <TherapistExercisePlan />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/therapist/progress-overview"
+        element={
+          <ProtectedRoute allowedRoles={["physiotherapist"]}>
+            <ProgressOverview />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/therapist/progress/:patientId"
+        element={
+          <ProtectedRoute allowedRoles={["physiotherapist"]}>
+            <ProgressDashboard />
           </ProtectedRoute>
         }
       />
 
       {/* Admin Routes */}
       <Route path="/admin/login" element={<AdminLogin />} />
-      <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+      <Route
+        path="/admin"
+        element={<Navigate to="/admin/dashboard" replace />}
+      />
       <Route
         path="/admin/dashboard"
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
+          <ProtectedRoute allowedRoles={["admin"]}>
             <AdminDashboard />
           </ProtectedRoute>
         }
@@ -132,7 +253,7 @@ function AppRoutes() {
       <Route
         path="/admin/therapist-approvals"
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
+          <ProtectedRoute allowedRoles={["admin"]}>
             <TherapistApprovals />
           </ProtectedRoute>
         }
@@ -140,7 +261,7 @@ function AppRoutes() {
       <Route
         path="/admin/therapists"
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
+          <ProtectedRoute allowedRoles={["admin"]}>
             <TherapistApprovals />
           </ProtectedRoute>
         }
@@ -148,7 +269,7 @@ function AppRoutes() {
       <Route
         path="/admin/therapists/:id"
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
+          <ProtectedRoute allowedRoles={["admin"]}>
             <TherapistDetails />
           </ProtectedRoute>
         }
@@ -156,7 +277,7 @@ function AppRoutes() {
       <Route
         path="/admin/patients/:id"
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
+          <ProtectedRoute allowedRoles={["admin"]}>
             <PatientDetails />
           </ProtectedRoute>
         }
@@ -171,11 +292,12 @@ function AppRoutes() {
 function App() {
   return (
     <AuthProvider>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background flex flex-col">
         <Navbar />
-        <main className="container mx-auto px-4 py-8">
+        <main className="flex-1">
           <AppRoutes />
         </main>
+        <Footer />
       </div>
     </AuthProvider>
   );

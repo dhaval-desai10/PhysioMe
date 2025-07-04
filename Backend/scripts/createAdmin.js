@@ -26,7 +26,6 @@ const createAdmin = async () => {
       status: 'approved'
     });
 
-    console.log('Admin user created successfully:', admin.email);
   } catch (error) {
     console.error('Error creating admin:', error);
   } finally {

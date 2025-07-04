@@ -1,13 +1,13 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import fileUpload from 'express-fileupload';
 import cookieParser from 'cookie-parser';
 import connectDB from './database/dbConnect.js';
 import authRoutes from './routes/authRoutes.js';
 import apiRoutes from './routes/apiRoutes.js';
 import patientRoutes from './routes/patientRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import testRoutes from './routes/testRoutes.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs'; // Add fs module import
@@ -31,28 +31,24 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // Add this line to handle form data
 app.use(cookieParser());
 
+// Don't use express-fileupload globally - let individual routes handle file uploads
+
 // Create temp directory if it doesn't exist
 if (!fs.existsSync('./temp')) {
   fs.mkdirSync('./temp', { recursive: true });
 }
 
-// File upload options
-const fileUploadOptions = {
-  useTempFiles: true,
-  tempFileDir: './temp/',
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-  abortOnLimit: true,
-  createParentPath: true,
-  safeFileNames: true,
-  uploadTimeout: 30000
-};
-
-// Create file upload middleware
-const fileUploadMiddleware = fileUpload(fileUploadOptions);
+// Create uploads directory if it doesn't exist  
+if (!fs.existsSync('./uploads')) {
+  fs.mkdirSync('./uploads', { recursive: true });
+}
 
 // Routes that don't need file upload
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+
+// Use the main API routes without global file upload middleware
+app.use('/api', apiRoutes);
 
 // Add approved therapists route
 app.get('/api/therapists/approved', async (req, res) => {
@@ -75,26 +71,6 @@ app.get('/api/therapists/approved', async (req, res) => {
     });
   }
 });
-
-// Routes that need file upload only for specific methods
-app.use('/api/therapist', (req, res, next) => {
-  // Skip fileUpload middleware for profile update route which uses multer
-  if (req.method === 'PUT' && req.path.includes('/profile')) {
-    next();
-  } else if (req.method === 'GET') {
-    next();
-  } else {
-    fileUploadMiddleware(req, res, next);
-  }
-}, apiRoutes);
-
-app.use('/api/patient', (req, res, next) => {
-  if (req.method === 'GET') {
-    next();
-  } else {
-    fileUploadMiddleware(req, res, next);
-  }
-}, patientRoutes);
 
 // Error handling middleware
 // This should typically be defined after all other app.use() and routes calls

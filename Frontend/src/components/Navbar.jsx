@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLoaderData, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/AuthContext";
 import { Button } from "./ui/button";
@@ -13,16 +13,36 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
-  
+  const dropdownRef = useRef(null);
+
   // Add scroll event listener to track when page is scrolled
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 10);
     };
-    
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Add outside click functionality to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("touchstart", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [isOpen]);
 
   const handleLogout = async () => {
     await logout();
@@ -43,14 +63,12 @@ export default function Navbar() {
       user.profilePictureUrl ||
       "https://via.placeholder.com/40?text=" +
         (user.name ? user.name.charAt(0).toUpperCase() : "U");
-        
-       
 
     if (user.role === "patient") {
       authLinks = [
         { href: "/patient/dashboard", label: "Dashboard" },
         { href: "/patient/appointments", label: "Appointments" },
-        // { href: '/patient/profile', label: 'My Profile', icon: <img src={profilePicUrl} alt="Profile" className="mr-2 w-6 h-6 rounded-full" /> }, // Example if patient profile pic needed
+        { href: "/patient/profile", label: "My Profile" },
         { onClick: handleLogout, label: "Logout" },
       ];
     } else if (user.role === "physiotherapist") {
@@ -60,13 +78,13 @@ export default function Navbar() {
         {
           href: "/therapist/profile",
           label: "My Profile",
-          isProfileLink: true, 
-        
+          isProfileLink: true,
+
           icon: (
             <img
               src={profilePicUrl}
               alt={user.name || "Profile"}
-              className="w-8 h-8 rounded-full border-2 transition-all border-primary-light group-hover:border-primary"
+              className="w-8 h-8 transition-all border-2 rounded-full border-primary-light group-hover:border-primary"
             />
           ),
         },
@@ -81,17 +99,21 @@ export default function Navbar() {
   }
 
   return (
-    <motion.nav 
+    <motion.nav
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className={`sticky top-0 z-40 w-full transition-all duration-300 ${scrolled ? 'shadow-sm backdrop-blur-md bg-background/80' : 'border-b bg-background'}`}
+      className={`sticky top-0 z-40 w-full transition-all duration-300 ${
+        scrolled
+          ? "shadow-sm backdrop-blur-md bg-background/80"
+          : "border-b bg-background"
+      }`}
     >
       <div className="container px-4 mx-auto">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center">
-            <motion.span 
+            <motion.span
               className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary/70"
               whileHover={{ scale: 1.05 }}
               transition={{ type: "spring", stiffness: 400, damping: 10 }}
@@ -101,12 +123,16 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden items-center space-x-1 md:flex">
+          <div className="items-center hidden space-x-1 md:flex">
             {navLinks.map((link) => (
-              <motion.div key={link.href} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <motion.div
+                key={link.href}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
                 <Link
                   to={link.href}
-                  className="px-3 py-2 text-sm font-medium rounded-md transition-colors text-foreground hover:text-primary"
+                  className="px-3 py-2 text-sm font-medium transition-colors rounded-md text-foreground hover:text-primary"
                 >
                   {link.label}
                 </Link>
@@ -115,11 +141,11 @@ export default function Navbar() {
           </div>
 
           {/* Auth Buttons or User Menu */}
-          <div className="hidden items-center space-x-4 md:flex">
+          <div className="items-center hidden space-x-4 md:flex">
             <ThemeToggle />
-            
+
             {isAuthenticated ? (
-              <div className="relative">
+              <div className="relative" ref={dropdownRef}>
                 <Button
                   variant="ghost"
                   className="flex items-center space-x-2 rounded-full"
@@ -127,12 +153,19 @@ export default function Navbar() {
                 >
                   <Avatar className="w-8 h-8 border ring-2 ring-primary/20">
                     <img
-                      src={user?.profilePictureUrl || `https://ui-avatars.com/api/?name=${user?.name || 'User'}`}
+                      src={
+                        user?.profilePictureUrl ||
+                        `https://ui-avatars.com/api/?name=${
+                          user?.name || "User"
+                        }`
+                      }
                       alt="Profile"
                       className="object-cover w-full h-full"
                     />
                   </Avatar>
-                  <span className="max-w-[100px] truncate">{user?.name || 'User'}</span>
+                  <span className="max-w-[100px] truncate">
+                    {user?.name || "User"}
+                  </span>
                   <ChevronDown className="w-4 h-4" />
                 </Button>
 
@@ -143,18 +176,23 @@ export default function Navbar() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
                       transition={{ duration: 0.2 }}
-                      className="absolute right-0 z-50 mt-2 w-56"
+                      className="absolute right-0 z-50 w-56 mt-2"
                     >
                       <Card className="py-2 border shadow-lg border-border/50">
                         {authLinks.map((link, index) => (
-                          <motion.div 
-                            key={index} 
+                          <motion.div
+                            key={index}
                             className="px-4 py-2"
-                            whileHover={{ backgroundColor: 'rgba(var(--primary), 0.1)' }}
+                            whileHover={{
+                              backgroundColor: "rgba(var(--primary), 0.1)",
+                            }}
                           >
                             {link.onClick ? (
                               <button
-                                onClick={link.onClick}
+                                onClick={() => {
+                                  link.onClick();
+                                  setIsOpen(false);
+                                }}
                                 className="w-full text-sm text-left transition-colors hover:text-primary"
                               >
                                 {link.label}
@@ -163,6 +201,7 @@ export default function Navbar() {
                               <Link
                                 to={link.href}
                                 className="block text-sm transition-colors hover:text-primary"
+                                onClick={() => setIsOpen(false)}
                               >
                                 {link.label}
                               </Link>
@@ -176,12 +215,18 @@ export default function Navbar() {
               </div>
             ) : (
               <>
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
                   <Link to="/login">
                     <Button variant="outline">Login</Button>
                   </Link>
                 </motion.div>
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
                   <Link to="/register">
                     <Button>Register</Button>
                   </Link>
@@ -195,7 +240,7 @@ export default function Navbar() {
             <ThemeToggle />
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="inline-flex justify-center items-center p-2 rounded-md transition-colors text-foreground hover:text-primary hover:bg-accent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary"
+              className="inline-flex items-center justify-center p-2 transition-colors rounded-md text-foreground hover:text-primary hover:bg-accent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary"
             >
               <span className="sr-only">Open main menu</span>
               <AnimatePresence mode="wait" initial={false}>
@@ -229,7 +274,7 @@ export default function Navbar() {
       {/* Mobile Menu */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div 
+          <motion.div
             className="border-t md:hidden bg-background"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
@@ -246,7 +291,7 @@ export default function Navbar() {
                 >
                   <Link
                     to={link.href}
-                    className="block px-3 py-2 text-base font-medium rounded-md transition-colors text-foreground hover:text-primary hover:bg-accent"
+                    className="block px-3 py-2 text-base font-medium transition-colors rounded-md text-foreground hover:text-primary hover:bg-accent"
                     onClick={() => setIsOpen(false)}
                   >
                     {link.label}
@@ -255,7 +300,7 @@ export default function Navbar() {
               ))}
 
               {isAuthenticated ? (
-                <motion.div 
+                <motion.div
                   className="pt-4 pb-3 border-t"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -265,24 +310,33 @@ export default function Navbar() {
                     <div className="flex-shrink-0">
                       <Avatar className="w-10 h-10 border ring-2 ring-primary/20">
                         <img
-                          src={user?.profilePictureUrl || `https://ui-avatars.com/api/?name=${user?.name || 'User'}`}
+                          src={
+                            user?.profilePictureUrl ||
+                            `https://ui-avatars.com/api/?name=${
+                              user?.name || "User"
+                            }`
+                          }
                           alt="Profile"
                           className="object-cover w-full h-full"
                         />
                       </Avatar>
                     </div>
                     <div className="ml-3">
-                      <div className="text-base font-medium">{user?.name || 'User'}</div>
-                      <div className="text-sm font-medium text-muted-foreground">{user?.email}</div>
+                      <div className="text-base font-medium">
+                        {user?.name || "User"}
+                      </div>
+                      <div className="text-sm font-medium text-muted-foreground">
+                        {user?.email}
+                      </div>
                     </div>
                   </div>
                   <div className="px-2 mt-3 space-y-1">
                     {authLinks.map((link, index) => (
-                      <motion.div 
+                      <motion.div
                         key={index}
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.3 + (index * 0.1), duration: 0.3 }}
+                        transition={{ delay: 0.3 + index * 0.1, duration: 0.3 }}
                       >
                         {link.onClick ? (
                           <button
@@ -290,14 +344,14 @@ export default function Navbar() {
                               link.onClick();
                               setIsOpen(false);
                             }}
-                            className="block px-3 py-2 w-full text-base font-medium text-left rounded-md transition-colors text-foreground hover:text-primary hover:bg-accent"
+                            className="block w-full px-3 py-2 text-base font-medium text-left transition-colors rounded-md text-foreground hover:text-primary hover:bg-accent"
                           >
                             {link.label}
                           </button>
                         ) : (
                           <Link
                             to={link.href}
-                            className="block px-3 py-2 text-base font-medium rounded-md transition-colors text-foreground hover:text-primary hover:bg-accent"
+                            className="block px-3 py-2 text-base font-medium transition-colors rounded-md text-foreground hover:text-primary hover:bg-accent"
                             onClick={() => setIsOpen(false)}
                           >
                             {link.label}
@@ -308,7 +362,7 @@ export default function Navbar() {
                   </div>
                 </motion.div>
               ) : (
-                <motion.div 
+                <motion.div
                   className="pt-4 pb-3 border-t"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -317,14 +371,14 @@ export default function Navbar() {
                   <div className="flex flex-col px-5 space-y-2">
                     <Link
                       to="/login"
-                      className="block px-3 py-2 text-base font-medium text-center rounded-md transition-colors text-foreground hover:text-primary hover:bg-accent"
+                      className="block px-3 py-2 text-base font-medium text-center transition-colors rounded-md text-foreground hover:text-primary hover:bg-accent"
                       onClick={() => setIsOpen(false)}
                     >
                       Login
                     </Link>
                     <Link
                       to="/register"
-                      className="block px-3 py-2 text-base font-medium text-center rounded-md transition-colors text-foreground bg-primary text-primary-foreground hover:bg-primary/90"
+                      className="block px-3 py-2 text-base font-medium text-center transition-colors rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
                       onClick={() => setIsOpen(false)}
                     >
                       Register

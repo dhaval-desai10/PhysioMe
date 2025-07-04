@@ -8,16 +8,16 @@ const patientSchema = new mongoose.Schema({
   },
   dateOfBirth: {
     type: Date,
-    required: true
+    required: false
   },
   gender: {
     type: String,
     enum: ['male', 'female', 'other'],
-    required: true
+    required: false
   },
   address: {
     type: String,
-    required: true
+    required: false
   },
   medicalHistory: {
     type: String,
@@ -49,7 +49,7 @@ const patientSchema = new mongoose.Schema({
 });
 
 // Add pre-save hook to update timestamps
-patientSchema.pre('save', function(next) {
+patientSchema.pre('save', function (next) {
   this.updatedAt = new Date();
   next();
 });

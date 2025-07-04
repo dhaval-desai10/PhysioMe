@@ -31,7 +31,7 @@ api.interceptors.response.use(
       // Clear auth data and redirect to login
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      
+
       // Only redirect if not already on login page
       if (!window.location.pathname.includes('/login')) {
         if (window.location.pathname.includes('/admin')) {
@@ -164,84 +164,45 @@ export const therapistApi = {
     if (!id) {
       return Promise.reject(new Error('Therapist ID is required'));
     }
-    
+
     // Create a custom instance for this request to handle FormData
     const formDataInstance = axios.create({
       baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/api',
       withCredentials: true,
       timeout: 60000, // 60 second timeout for uploads
     });
-    
+
     // Add auth token and ensure proper content type
     formDataInstance.interceptors.request.use(
       (config) => {
         config.headers.Authorization = `Bearer ${token}`;
-        
+
         // Handle FormData
         if (data instanceof FormData) {
           // Important: Remove Content-Type header to let the browser set it with boundary
           delete config.headers['Content-Type'];
-          
-          // Log the FormData contents for debugging
-          console.log('FormData entries:');
-          for (let pair of data.entries()) {
-            if (pair[1] instanceof File) {
-              console.log(pair[0], 'File:', pair[1].name, pair[1].type, pair[1].size, 'bytes');
-            } else {
-              console.log(pair[0], pair[1]);
-            }
-          }
-          
           // Verify FormData is not empty
           if (Array.from(data.entries()).length === 0) {
-            console.error('FormData is empty!');
             // Add a dummy field to prevent empty FormData
             data.append('_dummy', 'true');
           }
         }
-        
+
         return config;
       },
       (error) => Promise.reject(error)
     );
-    
+
     // Add response interceptor for better error handling
     formDataInstance.interceptors.response.use(
       (response) => {
-        console.log('Profile update successful:', {
-          status: response.status,
-          statusText: response.statusText,
-          data: response.data
-        });
         return response;
       },
       (error) => {
-        // Log detailed error information
-        console.error('Profile update error details:', {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          message: error.response?.data?.message || error.message,
-          data: error.response?.data,
-          url: error.config?.url,
-          method: error.config?.method
-        });
-        
-        // Log form data entries for debugging
-        if (data instanceof FormData) {
-          console.log('FormData entries that failed:');
-          for (let pair of data.entries()) {
-            if (pair[1] instanceof File) {
-              console.log(pair[0], 'File:', pair[1].name, pair[1].type, pair[1].size, 'bytes');
-            } else {
-              console.log(pair[0], pair[1]);
-            }
-          }
-        }
-        
         return Promise.reject(error);
       }
     );
-    
+
     return formDataInstance.put(`/therapist/${id}/profile`, data);
   },
   getAppointments: (id) => {
@@ -273,6 +234,13 @@ export const therapistApi = {
       return Promise.reject(new Error('Therapist ID is required'));
     }
     return api.post(`/therapist/${therapistId}/appointments`, appointmentData);
+  },
+  getAvailabilitySlots: () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return Promise.reject(new Error('Authentication required'));
+    }
+    return api.get('/therapist/availability');
   }
 };
 
@@ -286,7 +254,7 @@ export const patientApi = {
     if (!id) {
       return Promise.reject(new Error('Patient ID is required'));
     }
-    return api.get(`/patient/${id}/profile`);
+    return api.get(`/patient/profile/${id}`);
   },
   updateProfile: (id, data) => {
     const token = localStorage.getItem('token');
@@ -296,7 +264,17 @@ export const patientApi = {
     if (!id) {
       return Promise.reject(new Error('Patient ID is required'));
     }
-    return api.put(`/patient/${id}/profile`, data);
+
+    // For FormData, we need to remove the default Content-Type header
+    // so the browser can set it automatically with the correct boundary
+    const config = {};
+    if (data instanceof FormData) {
+      config.headers = {
+        'Content-Type': undefined,
+      };
+    }
+
+    return api.put(`/patient/profile/${id}`, data, config);
   },
   getAppointments: (id) => {
     const token = localStorage.getItem('token');
@@ -307,6 +285,14 @@ export const patientApi = {
       return Promise.reject(new Error('Patient ID is required'));
     }
     return api.get(`/patient/${id}/appointments`);
+  },
+  // Get appointments for authenticated user (no ID needed)
+  getMyAppointments: () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return Promise.reject(new Error('Authentication required'));
+    }
+    return api.get('/patient/appointments');
   },
   getTreatmentPlans: (id) => {
     const token = localStorage.getItem('token');

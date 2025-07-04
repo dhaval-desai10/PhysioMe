@@ -43,7 +43,6 @@ const TherapistApprovals = () => {
         
         console.log('Fetching pending therapists...');
         const response = await adminApi.getPendingTherapists();
-        console.log('Pending therapists response:', response.data);
         const therapists = response.data?.data || [];
 
         setPendingTherapists(therapists);
@@ -104,10 +103,10 @@ const TherapistApprovals = () => {
 
   if (loading && pendingTherapists.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-100 p-6">
-        <div className="max-w-7xl mx-auto">
+      <div className="min-h-screen p-6 bg-gray-100">
+        <div className="mx-auto max-w-7xl">
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+            <div className="w-10 h-10 border-b-2 border-blue-600 rounded-full animate-spin"></div>
             <span className="ml-3 text-lg">Loading therapist approvals...</span>
           </div>
         </div>
@@ -117,12 +116,12 @@ const TherapistApprovals = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-100 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+      <div className="min-h-screen p-6 bg-gray-100">
+        <div className="mx-auto max-w-7xl">
+          <div className="p-4 mb-6 border-l-4 border-red-400 bg-red-50">
             <div className="flex">
               <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <svg className="w-5 h-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
               </div>
@@ -137,8 +136,8 @@ const TherapistApprovals = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
+    <div className="container px-4 py-8 mx-auto">
+      <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold">Therapist Approvals</h1>
         <Button onClick={() => navigate('/admin/dashboard')} variant="outline">
           Back to Dashboard
@@ -146,9 +145,9 @@ const TherapistApprovals = () => {
       </div>
 
       <div className="mb-6">
-        <div className="flex items-center space-x-4 mb-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center mb-4 space-x-4">
+          <div className="relative flex-1">
+            <Search className="absolute w-4 h-4 left-3 top-3 text-muted-foreground" />
             <Input
               placeholder="Search by name, email, or specialization..."
               value={searchTerm}
@@ -212,7 +211,7 @@ const TherapistApprovals = () => {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8">
+              <div className="py-8 text-center">
                 <p className="text-muted-foreground">No pending therapist approvals found</p>
               </div>
             )}

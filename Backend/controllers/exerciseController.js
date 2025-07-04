@@ -49,6 +49,44 @@ export const createExercise = async (req, res) => {
   }
 };
 
+// Create exercise for treatment plan (without file upload)
+export const createExerciseForTreatmentPlan = async (req, res) => {
+  try {
+    const { name, description, instructions, targetArea, difficulty, recommendedSets, recommendedReps, mediaUrl, mediaType } = req.body;
+
+    // Validate required fields
+    if (!name || !description) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name and description are required'
+      });
+    }
+
+    const exercise = await Exercise.create({
+      name,
+      description,
+      mediaUrl: mediaUrl || 'https://via.placeholder.com/400x300?text=Exercise+Video',
+      mediaType: mediaType || 'image',
+      instructions: Array.isArray(instructions) ? instructions : [instructions || description],
+      targetArea: targetArea || 'General',
+      difficulty: difficulty || 'beginner',
+      recommendedSets: recommendedSets || 3,
+      recommendedReps: recommendedReps || 10,
+      createdBy: req.user._id
+    });
+
+    res.status(201).json({
+      success: true,
+      data: exercise
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 // Get all exercises (with filters)
 export const getExercises = async (req, res) => {
   try {

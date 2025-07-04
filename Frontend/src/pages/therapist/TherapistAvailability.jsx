@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Checkbox } from '../../components/ui/checkbox';
 import { useAuth } from '../../lib/AuthContext';
 import { therapistApi } from '../../services/api';
-import { Clock, Calendar, Save, AlertCircle } from 'lucide-react';
+import { Clock, Calendar, Save, AlertCircle, Trash2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 const workingDaysOptions = [
@@ -22,22 +22,29 @@ const timeSlots = [
   '20:00', '20:30', '21:00', '21:30'
 ];
 
+const defaultStart = timeSlots[0];
+const defaultEnd = timeSlots[timeSlots.length - 1];
+
 export default function TherapistAvailability() {
   const { user, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [availability, setAvailability] = useState({
     workingHours: {
-      start: '09:00',
-      end: '17:00'
+      start: defaultStart,
+      end: defaultEnd
     },
     appointmentDuration: 30,
     workingDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
   });
+  const [selectedDate, setSelectedDate] = useState('');
+  const [existingSlots, setExistingSlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && user?.role === 'physiotherapist') {
       loadCurrentAvailability();
+      loadExistingSlots();
     }
   }, [isAuthenticated, user]);
 
@@ -48,7 +55,10 @@ export default function TherapistAvailability() {
       if (response.data?.data) {
         const profile = response.data.data;
         setAvailability({
-          workingHours: profile.workingHours || { start: '09:00', end: '17:00' },
+          workingHours: {
+            start: timeSlots.includes(profile.workingHours?.start) ? profile.workingHours.start : defaultStart,
+            end: timeSlots.includes(profile.workingHours?.end) ? profile.workingHours.end : defaultEnd
+          },
           appointmentDuration: profile.appointmentDuration || 30,
           workingDays: profile.workingDays || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
         });
@@ -58,6 +68,19 @@ export default function TherapistAvailability() {
       toast.error('Failed to load current availability');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadExistingSlots = async () => {
+    try {
+      setLoadingSlots(true);
+      const response = await therapistApi.getAvailabilitySlots();
+      setExistingSlots(response.data.data || []);
+    } catch (error) {
+      console.error('Error loading slots:', error);
+      toast.error('Failed to load availability slots');
+    } finally {
+      setLoadingSlots(false);
     }
   };
 
@@ -73,30 +96,30 @@ export default function TherapistAvailability() {
   const handleSave = async () => {
     try {
       setSaving(true);
-      
       // Validate working hours
       if (availability.workingHours.start >= availability.workingHours.end) {
         toast.error('End time must be after start time');
         return;
       }
-
       // Validate working days
       if (availability.workingDays.length === 0) {
         toast.error('Please select at least one working day');
         return;
       }
-
-      // Create form data
-      const formData = new FormData();
-      formData.append('workingHours', JSON.stringify(availability.workingHours));
-      formData.append('appointmentDuration', availability.appointmentDuration.toString());
-      formData.append('workingDays', JSON.stringify(availability.workingDays));
-
-      await therapistApi.updateProfile(user._id, formData);
+      // Send as JSON, not FormData
+      const data = {
+        workingHours: availability.workingHours,
+        appointmentDuration: availability.appointmentDuration,
+        workingDays: availability.workingDays
+      };
+      await therapistApi.updateProfile(user._id, data);
       toast.success('Availability updated successfully');
     } catch (error) {
       console.error('Error saving availability:', error);
-      toast.error('Failed to update availability');
+      toast.error(
+        error.response?.data?.message ||
+        'Failed to update availability'
+      );
     } finally {
       setSaving(false);
     }
@@ -117,6 +140,40 @@ export default function TherapistAvailability() {
     }
     
     return slots;
+  };
+
+  const handleAddSlots = async () => {
+    if (!selectedDate) {
+      toast.error('Please select a date');
+      return;
+    }
+    const slots = generateTimeSlotsPreview();
+    if (slots.length === 0) {
+      toast.error('No valid time slots generated');
+      return;
+    }
+    try {
+      await therapistApi.addAvailabilitySlots({
+        date: selectedDate,
+        timeSlots: slots,
+        duration: availability.appointmentDuration
+      });
+      toast.success('Slots added!');
+      setSelectedDate('');
+      loadExistingSlots();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to add slots');
+    }
+  };
+
+  const handleDeleteSlot = async (slotId) => {
+    try {
+      await therapistApi.deleteAvailabilitySlot(slotId);
+      toast.success('Slot deleted successfully');
+      loadExistingSlots();
+    } catch (error) {
+      toast.error('Failed to delete slot');
+    }
   };
 
   if (!isAuthenticated || user?.role !== 'physiotherapist') {
@@ -171,7 +228,7 @@ export default function TherapistAvailability() {
                   <div>
                     <Label htmlFor="startTime">Start Time</Label>
                     <Select
-                      value={availability.workingHours.start}
+                      value={timeSlots.includes(availability.workingHours.start) ? availability.workingHours.start : defaultStart}
                       onValueChange={(value) =>
                         setAvailability(prev => ({
                           ...prev,
@@ -192,7 +249,7 @@ export default function TherapistAvailability() {
                   <div>
                     <Label htmlFor="endTime">End Time</Label>
                     <Select
-                      value={availability.workingHours.end}
+                      value={timeSlots.includes(availability.workingHours.end) ? availability.workingHours.end : defaultEnd}
                       onValueChange={(value) =>
                         setAvailability(prev => ({
                           ...prev,
@@ -324,6 +381,89 @@ export default function TherapistAvailability() {
               )}
             </Button>
           </div>
+
+          <div className="mt-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Calendar className="mr-2 h-5 w-5" />
+                  Add Availability Slots
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="date">Select Date</Label>
+                  <Input
+                    type="date"
+                    id="date"
+                    min={new Date().toISOString().split('T')[0]}
+                    value={selectedDate}
+                    onChange={e => setSelectedDate(e.target.value)}
+                  />
+                </div>
+                {selectedDate && (
+                  <div>
+                    <Label className="mb-2 block">Preview Time Slots</Label>
+                    <div className="grid grid-cols-3 gap-2 mb-4">
+                      {generateTimeSlotsPreview().map(time => (
+                        <div key={time} className="text-sm p-2 bg-gray-100 rounded">
+                          {time}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <Button onClick={handleAddSlots} disabled={!selectedDate} className="w-full">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Slots
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Existing Slots */}
+          <Card className="mt-8">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Clock className="mr-2 h-5 w-5" />
+                Existing Availability Slots
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingSlots ? (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                  <p className="mt-2 text-gray-600">Loading slots...</p>
+                </div>
+              ) : existingSlots.length === 0 ? (
+                <p className="text-center text-gray-600 py-4">No availability slots found</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {existingSlots.map(slot => (
+                    <div
+                      key={slot._id}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    >
+                      <div>
+                        <p className="font-medium">
+                          {new Date(slot.date).toLocaleDateString()}
+                        </p>
+                        <p className="text-sm text-gray-600">{slot.time}</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteSlot(slot._id)}
+                        disabled={slot.isBooked}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </motion.div>
     </div>

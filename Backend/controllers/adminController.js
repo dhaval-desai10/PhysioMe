@@ -1,18 +1,19 @@
 import User from '../model/User.js';
+import Patient from '../model/Patient.js';
 
 // Get admin dashboard stats
 export const getDashboardStats = async (req, res) => {
   try {
     const totalTherapists = await User.countDocuments({ role: 'physiotherapist' });
-    const pendingApprovals = await User.countDocuments({ 
+    const pendingApprovals = await User.countDocuments({
       role: 'physiotherapist',
       status: 'pending'
     });
-    const approvedTherapists = await User.countDocuments({ 
+    const approvedTherapists = await User.countDocuments({
       role: 'physiotherapist',
       status: 'approved'
     });
-    const rejectedTherapists = await User.countDocuments({ 
+    const rejectedTherapists = await User.countDocuments({
       role: 'physiotherapist',
       status: 'rejected'
     });
@@ -73,9 +74,12 @@ export const getTherapistDetails = async (req, res) => {
       });
     }
 
+    // Use the getProfile method to get properly formatted data including bio
+    const therapistProfile = therapist.getProfile();
+
     res.status(200).json({
       success: true,
-      data: therapist
+      data: therapistProfile
     });
   } catch (error) {
     console.error('Error in getTherapistDetails:', error);
@@ -162,7 +166,6 @@ export const getAllTherapists = async (req, res) => {
       data: therapists
     });
   } catch (error) {
-    console.error('Error fetching therapists:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -205,9 +208,44 @@ export const getPatientDetails = async (req, res) => {
       });
     }
 
+    // Get additional patient data
+    const patientData = await Patient.findOne({ userId: req.params.id });
+
+    // Use the User model's getProfile method to get basic data
+    const basicProfile = patient.getProfile();
+
+    // Combine with additional patient data if exists
+    const profileData = {
+      ...basicProfile,
+      // Override with additional data from Patient collection if available
+      ...(patientData ? {
+        gender: patientData.gender || '',
+        address: patientData.address || '',
+        allergies: patientData.allergies || '',
+        medications: patientData.medications || '',
+        emergencyContact: patientData.emergencyContact || {
+          name: '',
+          relationship: '',
+          phone: ''
+        },
+        insuranceInfo: patientData.insuranceInfo || {
+          provider: '',
+          policyNumber: '',
+          expiryDate: ''
+        }
+      } : {
+        gender: '',
+        address: '',
+        allergies: '',
+        medications: '',
+        emergencyContact: { name: '', relationship: '', phone: '' },
+        insuranceInfo: { provider: '', policyNumber: '', expiryDate: '' }
+      })
+    };
+
     res.status(200).json({
       success: true,
-      data: patient
+      data: profileData
     });
   } catch (error) {
     console.error('Error in getPatientDetails:', error);

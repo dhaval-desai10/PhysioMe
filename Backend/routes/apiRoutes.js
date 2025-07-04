@@ -5,7 +5,8 @@ import * as exerciseController from '../controllers/exerciseController.js';
 import * as treatmentPlanController from '../controllers/treatmentPlanController.js';
 import * as progressController from '../controllers/progressController.js';
 import * as therapistController from '../controllers/therapistController.js';
-import fileUpload from 'express-fileupload';
+import * as patientController from '../controllers/patientController.js';
+import * as contactController from '../controllers/contactController.js';
 import authRoutes from './authRoutes.js';
 import therapistRoutes from './therapistRoutes.js';
 import patientRoutes from './patientRoutes.js';
@@ -14,18 +15,12 @@ import { verifyToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Configure file upload middleware
-const fileUploadMiddleware = fileUpload({
-  useTempFiles: true,
-  tempFileDir: '/tmp/',
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-  abortOnLimit: true,
-  createParentPath: true,
-  debug: true
-});
-
 // Public routes
 router.use('/auth', authRoutes);
+
+// Contact form routes (public)
+router.post('/contact', contactController.sendContactForm);
+router.get('/contact/test', contactController.testEmail);
 
 // Protected routes
 router.use('/therapist', verifyToken, therapistRoutes);
@@ -35,10 +30,10 @@ router.use('/admin', verifyToken, adminRoutes);
 // Get all approved therapists (accessible to patients)
 router.get('/therapists/approved', therapistController.getAllApprovedTherapists);
 
-// Therapist profile routes - removing fileUploadMiddleware as it's handled by multer in therapistRoutes.js
-router.route('/:id/profile')
-  .get(protect, therapistController.getTherapistProfile)
-  .put(protect, isTherapist, therapistController.updateTherapistProfile);
+// Patient profile routes for therapists
+router.get('/patients/:id/profile', protect, isTherapist, patientController.getPatientProfile);
+
+// Remove duplicate therapist profile routes as they're handled in therapistRoutes.js
 
 // Appointment routes
 router.route('/appointments')
@@ -47,8 +42,8 @@ router.route('/appointments')
 
 router.route('/appointments/:id')
   .get(protect, appointmentController.getAppointmentById)
-  // .put(protect, isTherapist, appointmentController.updateAppointment) // Needs implementation or use updateAppointmentStatus
-  // .delete(protect, isTherapist, appointmentController.deleteAppointment); // Needs implementation
+// .put(protect, isTherapist, appointmentController.updateAppointment) // Needs implementation or use updateAppointmentStatus
+// .delete(protect, isTherapist, appointmentController.deleteAppointment); // Needs implementation
 
 router.put('/appointments/:id/status', protect, isTherapist, appointmentController.updateAppointmentStatus);
 // router.get('/appointments/available-slots', protect, appointmentController.getAvailableTimeSlots); // Needs implementation
@@ -59,6 +54,9 @@ router.put('/appointments/:id/status', protect, isTherapist, appointmentControll
 router.route('/exercises')
   .post(protect, isTherapist, exerciseController.createExercise)
   .get(protect, exerciseController.getExercises);
+
+// Route for creating exercises for treatment plans (without file upload)
+router.post('/exercises/for-treatment-plan', protect, isTherapist, exerciseController.createExerciseForTreatmentPlan);
 
 router.route('/exercises/:id')
   .get(protect, exerciseController.getExerciseById)
@@ -79,7 +77,7 @@ router.route('/treatment-plans/:id')
   .put(protect, isTherapist, treatmentPlanController.updateTreatmentPlan)
   .delete(protect, isTherapist, treatmentPlanController.deleteTreatmentPlan);
 
-// router.get('/treatment-plans/patient/:patientId', protect, isTherapist, treatmentPlanController.getPatientTreatmentPlans); // Check if this exists or needs implementation
+router.get('/treatment-plans/patient/:patientId', protect, isTherapist, treatmentPlanController.getPatientTreatmentPlans);
 // router.post('/treatment-plans/:id/exercises', protect, isTherapist, treatmentPlanController.addExercisesToPlan); // Check if this exists or needs implementation
 // router.delete('/treatment-plans/:id/exercises/:exerciseId', protect, isTherapist, treatmentPlanController.removeExerciseFromPlan); // Check if this exists or needs implementation
 // router.put('/treatment-plans/:id/status', protect, isTherapist, treatmentPlanController.updatePlanStatus); // Check if this exists or needs implementation
@@ -87,18 +85,17 @@ router.route('/treatment-plans/:id')
 // Progress routes
 router.route('/progress')
   .post(protect, isPatient, progressController.createProgress)
-  // .get(protect, progressController.getProgressHistory); // Needs implementation (or use getProgressByTreatmentPlan)
+  .get(protect, progressController.getProgressHistory);
 
-// Temporarily remove the /progress/:id route to bypass the error
-// router.route('/progress/:id')
-//   .get(protect, progressController.getProgressById)
-//   .put(protect, isPatient, progressController.updateProgress)
-//   .delete(protect, isPatient, progressController.deleteProgress);
+router.route('/progress/:id')
+  .get(protect, progressController.getProgressById)
+  .put(protect, isPatient, progressController.updateProgress)
+  .delete(protect, isPatient, progressController.deleteProgress);
 
-// router.get('/progress/stats/:treatmentPlanId', protect, progressController.getProgressStats); // Needs implementation
-// router.get('/progress/patient/:patientId', protect, isTherapist, progressController.getPatientProgress); // Needs implementation
-// router.post('/progress/:id/notes', protect, isTherapist, progressController.addProgressNote); // Needs implementation
-// router.get('/progress/summary/:patientId', protect, isTherapist, progressController.getProgressSummary); // Needs implementation
+router.get('/progress/stats/:treatmentPlanId', protect, progressController.getProgressStats);
+router.get('/progress/patient/:patientId', protect, isTherapist, progressController.getPatientProgress);
+router.get('/progress/summary/:patientId', protect, isTherapist, progressController.getProgressSummary);
+router.get('/progress/treatment-plan/:treatmentPlanId', protect, progressController.getProgressByTreatmentPlan);
 
 // Get available time slots for a therapist
 router.get('/therapists/:therapistId/available-slots/:date', appointmentController.getAvailableTimeSlots);

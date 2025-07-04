@@ -13,11 +13,13 @@
     "nodemailer": "^7.0.3",
     "nodemon": "^3.1.10"
   },
-  "name": "Backend",
+  "name": "physiome-backend",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "start": "node index.js",
+    "build": "cd ../Frontend && npm run build"
   },
   "keywords": [],
   "author": "",

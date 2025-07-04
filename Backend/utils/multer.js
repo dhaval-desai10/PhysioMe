@@ -37,66 +37,73 @@ const uploadMiddleware = multer({
     }
 });
 
-// Export the configured middleware
-// Use single() for profile picture uploads
-export const upload = uploadMiddleware.single('profilePicture');
+
+export const upload = (req, res, next) => {
+
+    // Use multer middleware - this will handle both file and form data
+    const multerSingle = uploadMiddleware.single('profilePicture');
+
+    multerSingle(req, res, (err) => {
+        if (err) {
+            console.error('Multer error:', err);
+
+            // Don't fail the entire request for multer errors unless it's critical
+            if (err instanceof multer.MulterError) {
+                if (err.code === 'LIMIT_FILE_SIZE') {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'File too large. Maximum size is 5MB.'
+                    });
+                } else if (err.code === 'UNEXPECTED_FIELD') {
+                    console.warn('Unexpected field in multer, continuing...');
+                } else {
+                    return res.status(400).json({
+                        success: false,
+                        message: err.message || 'File upload error'
+                    });
+                }
+            } else {
+                return res.status(400).json({
+                    success: false,
+                    message: err.message || 'File upload error'
+                });
+            }
+        }
+        next();
+    });
+};
 
 // Middleware to log form data and ensure req.body exists
 export const logFormData = (req, res, next) => {
-    console.log('=== FORM DATA MIDDLEWARE ===');
-    console.log('Request URL:', req.originalUrl);
-    console.log('Request method:', req.method);
-    console.log('Content-Type:', req.headers['content-type']);
-    
-    // Ensure req.body exists
-    if (!req.body) {
+   
+    // Ensure req.body exists and is an object
+    if (!req.body || typeof req.body !== 'object') {
         req.body = {};
         console.warn('Created empty req.body object');
     }
-    
+
     // Parse JSON strings in req.body if needed
     try {
-        // Handle workingHours if it's a string
-        if (typeof req.body.workingHours === 'string') {
+        // Safely handle workingHours if it's a string
+        if (req.body.workingHours && typeof req.body.workingHours === 'string') {
             try {
                 req.body.workingHours = JSON.parse(req.body.workingHours);
-                console.log('Parsed workingHours JSON string');
             } catch (e) {
                 console.error('Failed to parse workingHours:', e);
             }
         }
-        
-        // Handle workingDays if it's a string
-        if (typeof req.body.workingDays === 'string') {
+
+        // Safely handle workingDays if it's a string
+        if (req.body.workingDays && typeof req.body.workingDays === 'string') {
             try {
                 req.body.workingDays = JSON.parse(req.body.workingDays);
-                console.log('Parsed workingDays JSON string');
             } catch (e) {
                 console.error('Failed to parse workingDays:', e);
             }
         }
-        
-        // Log the body contents
-        console.log('Form Data keys:', Object.keys(req.body));
-        console.log('appointmentDuration value:', req.body.appointmentDuration);
-        console.log('Full Form Data:', JSON.stringify(req.body, null, 2));
     } catch (error) {
         console.error('Error processing req.body:', error);
     }
-    
-    // Log file information
-    if (req.file) {
-        console.log('File:', {
-            fieldname: req.file.fieldname,
-            originalname: req.file.originalname,
-            mimetype: req.file.mimetype,
-            size: req.file.size,
-            path: req.file.path
-        });
-    } else {
-        console.log('No file in request');
-    }
-    
-    console.log('=== END FORM DATA MIDDLEWARE ===');
+
     next();
 };

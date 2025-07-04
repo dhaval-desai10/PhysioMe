@@ -33,21 +33,21 @@ const userSchema = new mongoose.Schema({
   // Additional fields for physiotherapists
   specialization: {
     type: String,
-    required: function() {
+    required: function () {
       return this.role === 'physiotherapist';
     },
     trim: true
   },
   licenseNumber: {
     type: String,
-    required: function() {
+    required: function () {
       return this.role === 'physiotherapist';
     },
     trim: true
   },
   experience: {
     type: Number,
-    required: function() {
+    required: function () {
       return this.role === 'physiotherapist';
     },
     min: [0, 'Experience cannot be negative'],
@@ -85,8 +85,8 @@ const userSchema = new mongoose.Schema({
     type: [String],
     default: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
     validate: {
-      validator: function(days) {
-        return Array.isArray(days) && days.every(day => 
+      validator: function (days) {
+        return Array.isArray(days) && days.every(day =>
           ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].includes(day)
         );
       },
@@ -114,15 +114,11 @@ const userSchema = new mongoose.Schema({
   // Additional fields for patients
   dateOfBirth: {
     type: Date,
-    required: function() {
-      return this.role === 'patient';
-    }
+    required: false
   },
   medicalHistory: {
     type: String,
-    required: function() {
-      return this.role === 'patient';
-    },
+    required: false,
     trim: true
   },
   createdAt: {
@@ -134,9 +130,9 @@ const userSchema = new mongoose.Schema({
 });
 
 // Hash password before saving
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
-  
+
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
@@ -147,17 +143,18 @@ userSchema.pre('save', async function(next) {
 });
 
 // Method to compare password
-userSchema.methods.comparePassword = async function(candidatePassword) {
+userSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
 // Method to get user's full profile
-userSchema.methods.getProfile = function() {
+userSchema.methods.getProfile = function () {
   const profile = {
     id: this._id,
     name: this.name,
     email: this.email,
     role: this.role,
+    status: this.status, // Include status field
     createdAt: this.createdAt
   };
 
@@ -175,20 +172,22 @@ userSchema.methods.getProfile = function() {
     profile.clinicAddress = this.clinicAddress;
     profile.phone = this.phone;
   } else if (this.role === 'patient') {
+    profile.phone = this.phone;
     profile.dateOfBirth = this.dateOfBirth;
     profile.medicalHistory = this.medicalHistory;
+    profile.profilePictureUrl = this.profilePictureUrl;
   }
 
   return profile;
 };
 
 // Method to check if user is a physiotherapist
-userSchema.methods.isPhysiotherapist = function() {
+userSchema.methods.isPhysiotherapist = function () {
   return this.role === 'physiotherapist';
 };
 
 // Method to check if user is a patient
-userSchema.methods.isPatient = function() {
+userSchema.methods.isPatient = function () {
   return this.role === 'patient';
 };
 

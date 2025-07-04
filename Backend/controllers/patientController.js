@@ -1,13 +1,11 @@
 import User from '../model/User.js';
 import Patient from '../model/Patient.js';
 import cloudinary from '../utils/cloudinary.js';
-import fs from 'fs';
 
 // Get patient profile
 export const getPatientProfile = async (req, res) => {
   try {
     const patientId = req.params.id;
-    console.log('Fetching profile for patient ID:', patientId);
 
     // Find patient by ID
     const patient = await User.findOne({
@@ -16,48 +14,46 @@ export const getPatientProfile = async (req, res) => {
     }).select('-password');
 
     if (!patient) {
-      console.log('Patient not found in User collection');
       return res.status(404).json({
         success: false,
         message: 'Patient not found'
       });
     }
 
-    console.log('Found patient in User collection:', patient);
-
     // Get additional patient data
     const patientData = await Patient.findOne({ userId: patientId });
-    console.log('Found patient data:', patientData);
 
-    // Combine user and patient data
+    // Use the User model's getProfile method to get basic data
+    const basicProfile = patient.getProfile();
+
+    // Combine with additional patient data if exists
     const profileData = {
-      ...patient.toObject(),
-      ...(patientData ? patientData.toObject() : {}),
-      // Ensure these fields are always present
-      firstName: patient.firstName || '',
-      lastName: patient.lastName || '',
-      email: patient.email || '',
-      phone: patient.phone || '',
-      dateOfBirth: patientData?.dateOfBirth || '',
-      gender: patientData?.gender || '',
-      address: patientData?.address || '',
-      medicalHistory: patientData?.medicalHistory || '',
-      allergies: patientData?.allergies || '',
-      medications: patientData?.medications || '',
-      emergencyContact: patientData?.emergencyContact || {
-        name: '',
-        relationship: '',
-        phone: ''
-      },
-      insuranceInfo: patientData?.insuranceInfo || {
-        provider: '',
-        policyNumber: '',
-        expiryDate: ''
-      },
-      profilePictureUrl: patient.profilePictureUrl || ''
+      ...basicProfile,
+      // Override with additional data from Patient collection if available
+      ...(patientData ? {
+        gender: patientData.gender || '',
+        address: patientData.address || '',
+        allergies: patientData.allergies || '',
+        medications: patientData.medications || '',
+        emergencyContact: patientData.emergencyContact || {
+          name: '',
+          relationship: '',
+          phone: ''
+        },
+        insuranceInfo: patientData.insuranceInfo || {
+          provider: '',
+          policyNumber: '',
+          expiryDate: ''
+        }
+      } : {
+        gender: '',
+        address: '',
+        allergies: '',
+        medications: '',
+        emergencyContact: { name: '', relationship: '', phone: '' },
+        insuranceInfo: { provider: '', policyNumber: '', expiryDate: '' }
+      })
     };
-
-    console.log('Sending combined profile data:', profileData);
 
     res.status(200).json({
       success: true,
@@ -76,9 +72,6 @@ export const getPatientProfile = async (req, res) => {
 export const updatePatientProfile = async (req, res) => {
   try {
     const patientId = req.params.id;
-    console.log('Updating profile for patient ID:', patientId);
-    console.log('Request body:', req.body);
-    console.log('Request file:', req.file);
 
     // Find patient
     const patient = await User.findOne({
@@ -96,11 +89,15 @@ export const updatePatientProfile = async (req, res) => {
     // Handle profile picture upload
     if (req.file) {
       try {
-        const result = await cloudinary.uploader.upload(req.file.path, {
-          folder: 'physiome/patients',
-          width: 500,
-          crop: 'scale'
-        });
+        // For memory storage, we need to upload from buffer
+        const result = await cloudinary.uploader.upload(
+          `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`,
+          {
+            folder: 'physiome/patients',
+            width: 500,
+            crop: 'scale'
+          }
+        );
 
         // Delete old profile picture if exists
         if (patient.profilePictureUrl) {
@@ -108,7 +105,6 @@ export const updatePatientProfile = async (req, res) => {
             const publicId = patient.profilePictureUrl.split('/').pop().split('.')[0];
             if (publicId) {
               await cloudinary.uploader.destroy(`physiome/patients/${publicId}`);
-              console.log('Deleted old profile picture');
             }
           } catch (deleteError) {
             console.error('Error deleting old profile picture:', deleteError);
@@ -116,9 +112,6 @@ export const updatePatientProfile = async (req, res) => {
         }
 
         patient.profilePictureUrl = result.secure_url;
-        
-        // Delete the temporary file
-        fs.unlinkSync(req.file.path);
       } catch (error) {
         console.error('Error uploading profile picture:', error);
         return res.status(500).json({
@@ -128,10 +121,17 @@ export const updatePatientProfile = async (req, res) => {
       }
     }
 
-    // Update basic fields
-    if (req.body.firstName) patient.firstName = req.body.firstName;
-    if (req.body.lastName) patient.lastName = req.body.lastName;
-    if (req.body.phone) patient.phone = req.body.phone;
+    // Update basic fields in User model
+    if (req.body.firstName && req.body.lastName) {
+      patient.name = `${req.body.firstName} ${req.body.lastName}`.trim();
+    }
+    if (req.body.phone !== undefined) patient.phone = req.body.phone;
+    if (req.body.dateOfBirth !== undefined && req.body.dateOfBirth !== '') {
+      patient.dateOfBirth = new Date(req.body.dateOfBirth);
+    }
+    if (req.body.medicalHistory !== undefined) {
+      patient.medicalHistory = req.body.medicalHistory;
+    }
 
     await patient.save();
 
@@ -141,37 +141,30 @@ export const updatePatientProfile = async (req, res) => {
       patientData = new Patient({ userId: patientId });
     }
 
-    // Update patient-specific fields
-    if (req.body.dateOfBirth) patientData.dateOfBirth = req.body.dateOfBirth;
-    if (req.body.gender) patientData.gender = req.body.gender;
-    if (req.body.address) patientData.address = req.body.address;
-    if (req.body.medicalHistory) patientData.medicalHistory = req.body.medicalHistory;
-    if (req.body.allergies) patientData.allergies = req.body.allergies;
-    if (req.body.medications) patientData.medications = req.body.medications;
-    if (req.body.emergencyContact) {
-      try {
-        patientData.emergencyContact = JSON.parse(req.body.emergencyContact);
-      } catch (error) {
-        console.error('Error parsing emergency contact:', error);
-        patientData.emergencyContact = req.body.emergencyContact;
-      }
+    // Update patient-specific fields in Patient collection (for additional data like address, gender, etc.)
+    if (req.body.gender !== undefined) patientData.gender = req.body.gender;
+    if (req.body.address !== undefined) {
+      patientData.address = req.body.address;
     }
-    if (req.body.insuranceInfo) {
-      try {
-        patientData.insuranceInfo = JSON.parse(req.body.insuranceInfo);
-      } catch (error) {
-        console.error('Error parsing insurance info:', error);
-        patientData.insuranceInfo = req.body.insuranceInfo;
-      }
-    }
+    if (req.body.allergies !== undefined) patientData.allergies = req.body.allergies;
+    if (req.body.medications !== undefined) patientData.medications = req.body.medications;
 
     await patientData.save();
 
-    // Combine updated data
+    // Get the updated profile using the User model's getProfile method
+    const updatedUser = await User.findById(patientId).select('-password');
+    const updatedPatientData = await Patient.findOne({ userId: patientId });
+
     const updatedProfile = {
-      ...patient.toObject(),
-      ...patientData.toObject(),
-      profilePictureUrl: patient.profilePictureUrl
+      ...updatedUser.getProfile(),
+      ...(updatedPatientData ? {
+        gender: updatedPatientData.gender || '',
+        address: updatedPatientData.address || '',
+        allergies: updatedPatientData.allergies || '',
+        medications: updatedPatientData.medications || '',
+        emergencyContact: updatedPatientData.emergencyContact || { name: '', relationship: '', phone: '' },
+        insuranceInfo: updatedPatientData.insuranceInfo || { provider: '', policyNumber: '', expiryDate: '' }
+      } : {})
     };
 
     res.json({

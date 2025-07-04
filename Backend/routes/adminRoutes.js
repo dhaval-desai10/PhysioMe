@@ -29,6 +29,9 @@ router.put('/therapist-approvals/:id/reject', rejectTherapist);
 // Get all therapists
 router.get('/therapists', getAllTherapists);
 
+// Get single therapist details
+router.get('/therapists/:id', getTherapistDetails);
+
 // Get all patients
 router.get('/patients', getAllPatients);
 

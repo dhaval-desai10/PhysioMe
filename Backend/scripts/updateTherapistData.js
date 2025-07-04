@@ -12,8 +12,7 @@ const updateTherapistData = async () => {
 
     // Find all therapists
     const therapists = await User.find({ role: 'physiotherapist' });
-    console.log(`Found ${therapists.length} therapists to update`);
-
+    
     // Update each therapist
     for (const therapist of therapists) {
       // If licenseNumber contains address, move it to clinicAddress
@@ -44,10 +43,8 @@ const updateTherapistData = async () => {
 
       // Save the updated therapist
       await therapist.save();
-      console.log(`Updated therapist: ${therapist.name}`);
     }
 
-    console.log('All therapists updated successfully');
   } catch (error) {
     console.error('Error updating therapists:', error);
   } finally {

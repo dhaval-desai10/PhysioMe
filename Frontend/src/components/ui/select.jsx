@@ -40,7 +40,7 @@ function SelectTrigger({
       {...props}>
       {children}
       <SelectPrimitive.Icon asChild>
-        <ChevronDownIcon className="size-4 opacity-50" />
+        <ChevronDownIcon className="opacity-50 size-4" />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>)
   );
@@ -109,7 +109,6 @@ function SelectItem({
               try {
                 return <CheckIcon className="size-4" />;
               } catch (error) {
-                console.error("Error rendering CheckIcon:", error);
                 return <span>✓</span>; // Fallback checkmark
               }
             })()}

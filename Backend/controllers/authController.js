@@ -5,20 +5,20 @@ import jwt from 'jsonwebtoken';
 // Register new user
 export const register = async (req, res) => {
   try {
-    const { 
-      firstName, 
-      lastName, 
-      email, 
-      password, 
-      role, 
-      phone, 
-      specialization, 
-      yearsOfExperience, 
+    const {
+      firstName,
+      lastName,
+      email,
+      password,
+      role,
+      phone,
+      specialization,
+      yearsOfExperience,
       licenseNumber,
-      clinicName, 
-      clinicAddress, 
-      dateOfBirth, 
-      medicalHistory 
+      clinicName,
+      clinicAddress,
+      dateOfBirth,
+      medicalHistory
     } = req.body;
 
     // Validate required fields for physiotherapists
@@ -66,9 +66,9 @@ export const register = async (req, res) => {
     // Check if user already exists
     const userExists = await User.findOne({ email });
     if (userExists) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'User already exists' 
+        message: 'User already exists'
       });
     }
 
@@ -93,6 +93,7 @@ export const register = async (req, res) => {
         workingDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
       }),
       ...(role === 'patient' && {
+        phone,
         dateOfBirth,
         medicalHistory,
       })
@@ -137,7 +138,7 @@ export const register = async (req, res) => {
 // Direct admin login
 export const directAdminLogin = async (req, res) => {
   try {
-    const admin = await User.findOne({ 
+    const admin = await User.findOne({
       email: 'admin@gmail.com',
       role: 'admin'
     });
@@ -231,13 +232,7 @@ export const login = async (req, res) => {
       success: true,
       data: {
         token,
-        user: {
-          _id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          status: user.status
-        }
+        user: user.getProfile()
       }
     });
   } catch (error) {
@@ -265,7 +260,7 @@ export const logout = (req, res) => {
 export const getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('-password');
-    
+
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -359,7 +354,7 @@ export const getMe = async (req, res) => {
     }
 
     const user = await User.findById(req.user._id).select('-password');
-    
+
     if (!user) {
       return res.status(404).json({
         success: false,
