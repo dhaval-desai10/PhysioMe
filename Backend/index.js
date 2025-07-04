@@ -103,7 +103,7 @@ if (process.env.NODE_ENV === 'production') {
         message: 'API endpoint not found'
       });
     }
-    
+
     res.sendFile(path.join(frontendBuildPath, 'index.html'));
   });
 } else {
