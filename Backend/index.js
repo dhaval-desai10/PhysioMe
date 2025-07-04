@@ -26,10 +26,19 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5174',
   'https://physio-me-npzs.vercel.app',
+  'https://physio-me.vercel.app',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
 app.use(cors({
+  origin: allowedOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Handle preflight requests
+app.options('*', cors({
   origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -80,6 +89,33 @@ app.get('/api/therapists/approved', async (req, res) => {
   }
 });
 
+// Serve static files from the frontend build directory in production
+if (process.env.NODE_ENV === 'production') {
+  const frontendBuildPath = path.join(__dirname, '../Frontend/dist');
+  app.use(express.static(frontendBuildPath));
+
+  // Catch all handler for client-side routing
+  app.get('*', (req, res) => {
+    // Skip API routes
+    if (req.path.startsWith('/api')) {
+      return res.status(404).json({
+        success: false,
+        message: 'API endpoint not found'
+      });
+    }
+    
+    res.sendFile(path.join(frontendBuildPath, 'index.html'));
+  });
+} else {
+  // Handle unhandled routes (404) in development
+  app.use((req, res, next) => {
+    res.status(404).json({
+      success: false,
+      message: 'API endpoint not found'
+    });
+  });
+}
+
 // Error handling middleware
 // This should typically be defined after all other app.use() and routes calls
 app.use((err, req, res, next) => {
@@ -88,15 +124,6 @@ app.use((err, req, res, next) => {
     success: false,
     message: 'Internal server error',
     error: process.env.NODE_ENV === 'development' ? err.message : undefined
-  });
-});
-
-// Handle unhandled routes (404)
-// This should be the last middleware to catch all unhandled requests
-app.use((req, res, next) => {
-  res.status(404).json({
-    success: false,
-    message: 'API endpoint not found'
   });
 });
 
